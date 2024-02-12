@@ -8,6 +8,6 @@ content-type: application/json
 {
   "title": "This is a test entry",
   "author": "Me (the dev)",
-  "url": "url?",
+  "url": "http://url???.com",
   "likes": 9001
 }
