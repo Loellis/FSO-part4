@@ -11,3 +11,17 @@ content-type: application/json
   "url": "http://url???.com",
   "likes": 9001
 }
+
+### Delete blog post
+DELETE http://localhost:3003/api/blogs/65c9feeb4a8cc3a2ce7f08ee HTTP/1.1
+
+### Update a blog post
+PUT http://localhost:3003/api/blogs/65c9fee14a8cc3a2ce7f08ec HTTP/1.1
+content-type: application/json
+
+{
+  "title": "test change",
+  "author": "changed",
+  "url": "http://changed.com",
+  "likes": 777
+}
