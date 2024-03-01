@@ -1,19 +1,9 @@
 ### Get all blog posts
 GET http://localhost:3003/api/blogs
 
-### Create blog post
-POST http://localhost:3003/api/blogs/ HTTP/1.1
-content-type: application/json
-
-{
-  "title": "This is a test entry",
-  "author": "Me (the dev)",
-  "url": "http://url???.com",
-  "likes": 9001
-}
-
 ### Delete blog post
-DELETE http://localhost:3003/api/blogs/65c9feeb4a8cc3a2ce7f08ee HTTP/1.1
+DELETE http://localhost:3003/api/blogs/65e0776a8c5bf8156c5f8724 HTTP/1.1
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InRlc3QiLCJpZCI6IjY1ZGYzNTZhN2E0ZGM2MTU4NTg3MDE4YyIsImlhdCI6MTcwOTIwOTMyMywiZXhwIjoxNzA5MjEyOTIzfQ.V0kpRcE5jgt_q7ybh8C-_FC_LRy3CSYaqk_YXayBUyI
 
 ### Update a blog post
 PUT http://localhost:3003/api/blogs/65c9fee14a8cc3a2ce7f08ec HTTP/1.1
@@ -31,7 +21,32 @@ POST http://localhost:3003/api/users/ HTTP/1.1
 content-type: application/json
 
 {
-  "username": "te",
+  "username": "test",
   "name": "test",
   "password": "test"
+}
+
+### Get users
+GET http://localhost:3003/api/users
+
+### Login user test
+POST http://localhost:3003/api/login
+content-type: application/json
+
+{
+  "username": "test",
+  "password": "test"
+}
+
+// "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InRlc3QiLCJpZCI6IjY1ZGYzNTZhN2E0ZGM2MTU4NTg3MDE4YyIsImlhdCI6MTcwOTIwNDgwMn0.JtBldfWgyXOtcHcUEZOAoj_rcrPCHm6sPUSmbJSA954"
+### Create blog post
+POST http://localhost:3003/api/blogs/ HTTP/1.1
+content-type: application/json
+authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InRlc3QiLCJpZCI6IjY1ZGYzNTZhN2E0ZGM2MTU4NTg3MDE4YyIsImlhdCI6MTcwOTIwOTMyMywiZXhwIjoxNzA5MjEyOTIzfQ.V0kpRcE5jgt_q7ybh8C-_FC_LRy3CSYaqk_YXayBUyI
+
+{
+  "title": "new",
+  "author": "Martin",
+  "url": "http://url???.com",
+  "likes": 9001
 }

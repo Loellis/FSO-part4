@@ -1,19 +1,52 @@
-const { test, after, beforeEach, describe } = require("node:test")
+const { test, after, beforeEach, before, describe } = require("node:test")
 const assert = require("node:assert")
 const mongoose = require("mongoose")
+const bcrypt = require("bcrypt")
 const { initialBlogEntries, blogsInDb, nonExistingId } = require("./test_helper")
 const supertest = require("supertest")
 const app = require("../app")
 const Blog = require("../models/blog")
+const User = require("../models/user")
 
 const api = supertest(app)
 
+let authToken
+let createdUser
 
-// GENERAL
+// Block to execute before running any tests
+before(async () => {
+  // Remove any users in test database
+  await User.deleteMany({})
+
+  // Create new user with name root and password sekret
+  password = "sekret"
+  const saltRounds = 10
+  passwordHash = await bcrypt.hash(password, saltRounds)
+
+  createdUser = new User({ username: "root", passwordHash })
+  await createdUser.save()
+
+  // Login the created user
+  const response = await api
+    .post("/api/login")
+    .send({ username: "root", password: "sekret" })
+
+  // Save auth token
+  authToken = response.body.token
+})
+
 describe("when there are initially some blogs saved", () => {
   beforeEach(async () => {
+    // Remove any blogs in test database
     await Blog.deleteMany({})
-    let blogObjects = initialBlogEntries.map(blog => new Blog(blog))
+
+    // Populate test database with some initial blog entries and set the created user as owner
+    let blogObjects = initialBlogEntries.map(blog => {
+      blog.user = createdUser._id
+      return new Blog(blog)
+    })
+
+    // Operation to make sure all promises are resolved before performing tests
     let promiseArray = blogObjects.map(blog => blog.save())
     await Promise.all(promiseArray)
   })
@@ -21,12 +54,13 @@ describe("when there are initially some blogs saved", () => {
   test("blogs are returned as json", async () => {
     await api
       .get("/api/blogs")
+      .set("Authorization", `Bearer ${authToken}`)
       .expect(200)
       .expect("Content-Type", /application\/json/)
   })
 
   test("all blogs are returned", async () => {
-    const response = await api.get("/api/blogs")
+    const response = await api.get("/api/blogs").set("Authorization", `Bearer ${authToken}`)
     assert.strictEqual(response.body.length, initialBlogEntries.length)
   })
 
@@ -46,10 +80,12 @@ describe("when there are initially some blogs saved", () => {
         author: "Martin Kobro",
         url: "http://www.thisisatotallylegitlink.com/",
         likes: 99,
+        user: createdUser._id
       }
 
       await api
         .post("/api/blogs")
+        .set("Authorization", `Bearer ${authToken}`)
         .send(newBlog)
         .expect(201)
         .expect("Content-Type", /application\/json/)
@@ -65,15 +101,35 @@ describe("when there are initially some blogs saved", () => {
       assert(urls.includes("http://www.thisisatotallylegitlink.com/"))
     })
 
+    test("fails with status code 401 if auth token is not provided", async () => {
+      const newBlog = {
+        title: "Full stack open is fun!",
+        author: "Martin Kobro",
+        url: "http://www.thisisatotallylegitlink.com/",
+        likes: 99,
+        user: createdUser._id
+      }
+
+      await api
+        .post("/api/blogs")
+        .send(newBlog)
+        .expect(401)
+
+      const blogsAfterOperation = await blogsInDb()
+      assert.strictEqual(blogsAfterOperation.length, initialBlogEntries.length)
+    })
+
     test("likes property defaults to 0 when not defined", async () => {
       const newBlog = {
         title: "Blogpost without the likes property",
         author: "Martin Kobro",
         url: "http://www.thisisatotallylegitlink.com/",
+        user: createdUser._id
       }
 
       await api
         .post("/api/blogs")
+        .set("Authorization", `Bearer ${authToken}`)
         .send(newBlog)
         .expect(201)
         .expect("Content-Type", /application\/json/)
@@ -88,6 +144,7 @@ describe("when there are initially some blogs saved", () => {
 
       await api
         .post("/api/blogs")
+        .set("Authorization", `Bearer ${authToken}`)
         .send(newBlog)
         .expect(400)
 
@@ -101,10 +158,12 @@ describe("when there are initially some blogs saved", () => {
         title: "Full stack open is fun!",
         url: "http://www.thisisatotallylegitlink.com/",
         likes: 99,
+        user: createdUser._id
       }
 
       await api
         .post("/api/blogs")
+        .set("Authorization", `Bearer ${authToken}`)
         .send(newBlog)
         .expect(400)
 
@@ -118,10 +177,12 @@ describe("when there are initially some blogs saved", () => {
         author: "Martin Kob",
         url: "http://www.thisisatotallylegitlink.com/",
         likes: 99,
+        user: createdUser._id
       }
 
       await api
         .post("/api/blogs")
+        .set("Authorization", `Bearer ${authToken}`)
         .send(newBlog)
         .expect(400)
 
@@ -135,10 +196,12 @@ describe("when there are initially some blogs saved", () => {
         title: "This blog has no url",
         author: "Martin Kob",
         likes: 99,
+        user: createdUser._id
       }
 
       await api
         .post("/api/blogs")
+        .set("Authorization", `Bearer ${authToken}`)
         .send(newBlog)
         .expect(400)
 
@@ -154,8 +217,11 @@ describe("when there are initially some blogs saved", () => {
       const blogsBeforeOperation = await blogsInDb()
       const blogToView = blogsBeforeOperation[0]
 
+      blogToView.user = blogToView.user.toString()
+
       const resultBlog = await api
         .get(`/api/blogs/${blogToView.id}`)
+        .set("Authorization", `Bearer ${authToken}`)
         .expect(200)
         .expect("Content-Type", /application\/json/)
 
@@ -167,7 +233,15 @@ describe("when there are initially some blogs saved", () => {
 
       await api
         .get(`/api/blogs/${validNonExistingId}`)
+        .set("Authorization", `Bearer ${authToken}`)
         .expect(404)
+    })
+
+    test("fails with status code 400 if id is invalid", async () => {
+      await api
+      .get(`/api/blogs/not-a-valid-id`)
+      .set("Authorization", `Bearer ${authToken}`)
+      .expect(400)
     })
   })
 
@@ -179,6 +253,7 @@ describe("when there are initially some blogs saved", () => {
 
       await api
         .delete(`/api/blogs/${blogToDelete.id}`)
+        .set("Authorization", `Bearer ${authToken}`)
         .expect(204)
 
       const blogsAfterOperation = await blogsInDb()
@@ -203,6 +278,7 @@ describe("when there are initially some blogs saved", () => {
 
       await api
         .put(`/api/blogs/${blogToUpdate.id}`)
+        .set("Authorization", `Bearer ${authToken}`)
         .send(blogChanges)
         .expect(200)
         .expect("Content-Type", /application\/json/)
@@ -223,11 +299,14 @@ describe("when there are initially some blogs saved", () => {
 
       await api
         .put("/api/blogs/non-existing-id")
+        .set("Authorization", `Bearer ${authToken}`)
         .send(validBlogChanges)
         .expect(400)
     })
 
     test("fails with status code 404 if id is valid, but not found", async () => {
+      const validNonExistingId = await nonExistingId()
+
       const validBlogChanges =   {
         title: "Canonical string reduction (changed thrice)",
         author: "Edsger W. Dijkstra (changed thrice)",
@@ -236,7 +315,8 @@ describe("when there are initially some blogs saved", () => {
       }
 
       await api
-        .put("/api/blogs/111111111111111111111111")
+        .put(`/api/blogs/${validNonExistingId}`)
+        .set("Authorization", `Bearer ${authToken}`)
         .send(validBlogChanges)
         .expect(404)
     })
